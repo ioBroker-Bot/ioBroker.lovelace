@@ -45,7 +45,7 @@ function mediaClassForFile(name: string): { media_class: string; media_content_t
 /**
  * Implements the Home Assistant media browser and image-manager commands:
  * `media_source/browse_media` + `media_source/resolve_media` (exposing the adapter's uploaded images
- * in `uploaded_images/` and custom cards in `cards/`), plus `image/list` and `image/delete` for the
+ * in `uploaded_images/` and custom cards in `cards/`), plus `image/delete` for the
  * uploaded-images manager.
  */
 class MediaSourceModule {
@@ -80,47 +80,12 @@ class MediaSourceModule {
             this.sendResponse(ws, message.id, await this._resolve(message.media_content_id as string));
             return true;
         }
-        if (type === 'image/list') {
-            this.sendResponse(ws, message.id, await this._listImages());
-            return true;
-        }
         if (type === 'image/delete') {
             await this._deleteImage(message.image_id as string);
             this.sendResponse(ws, message.id, null);
             return true;
         }
         return false;
-    }
-
-    /**
-     * List the metadata of all uploaded images (used by the frontend image manager).
-     *
-     * @returns array of { id, filesize, name, uploaded_at, content_type }
-     */
-    private async _listImages(): Promise<Record<string, unknown>[]> {
-        const result: Record<string, unknown>[] = [];
-        let files: { file: string; isDir: boolean }[] = [];
-        try {
-            files = await this.adapter.readDirAsync(this.adapter.namespace, IMAGE_FOLDER);
-        } catch {
-            return result;
-        }
-        for (const f of files) {
-            if (f.isDir || !f.file.endsWith('.json')) {
-                continue;
-            }
-            try {
-                const meta = JSON.parse(
-                    (
-                        await this.adapter.readFileAsync(this.adapter.namespace, `${IMAGE_FOLDER}/${f.file}`)
-                    ).file.toString(),
-                );
-                result.push(meta);
-            } catch {
-                // skip unreadable sidecar
-            }
-        }
-        return result;
     }
 
     /**

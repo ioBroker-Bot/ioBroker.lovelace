@@ -33,6 +33,7 @@ var import_sun = require("./sun");
 var import_genericConverter = require("./converters/genericConverter");
 var import_converter = require("./converters/converter");
 var converterSwitch = __toESM(require("./converters/switch"));
+var converterTimer = __toESM(require("./converters/timer"));
 var converterBinarySensors = __toESM(require("./converters/binary_sensor"));
 var converterSensors = __toESM(require("./converters/sensor"));
 var converterGeoLocation = __toESM(require("./converters/geo_location"));
@@ -682,38 +683,7 @@ class WebServer {
       } else if (entityType === "switch") {
         return converterSwitch.processManualEntity(id, obj, entity, this._objectData.objects, custom);
       } else if (entityType === "timer") {
-        entity.context.STATE = { getId: null, setId: null, attribute: "state" };
-        entity.context.lastValue = null;
-        entity.attributes.remaining = 0;
-        entity.context.ATTRIBUTES = [
-          {
-            attribute: "remaining",
-            getId: id,
-            setId: id,
-            getParser: function(entity2, attr, state) {
-              state = state || { val: null };
-              if (!state.val) {
-                entity2.state = "idle";
-              } else if (entity2.context.lastValue === null) {
-                entity2.state = "active";
-              } else if (entity2.context.lastValue === state.val) {
-                entity2.state = "paused";
-              } else {
-                entity2.state = "active";
-              }
-              entity2.context.lastValue = state.val;
-              if (typeof state.val === "string" && state.val.indexOf(":") !== -1) {
-                entity2.attributes.remaining = state.val;
-              } else {
-                state.val = parseInt(state.val, 10);
-                const hours = Math.floor(state.val / 3600);
-                const minutes = Math.floor(state.val % 3600 / 60);
-                const seconds = state.val % 60;
-                entity2.attributes.remaining = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-              }
-            }
-          }
-        ];
+        return converterTimer.processManualEntity(id, obj, entity, this._objectData.objects, custom);
       }
       entity.addID2entity(id);
       return [entity];
@@ -787,26 +757,6 @@ class WebServer {
       }
       this.log.warn(`Cannot find attribute temperature in ${entity_id}`);
       this._sendResponse(ws, data.id);
-    } else if (data.service === "set_operation_mode") {
-      this.log.debug(`set_operation_mode ${data.service_data.operation_mode}`);
-      this.adapter.setForeignState(id, false, false, { user }, () => this._sendResponse(ws, data.id));
-    } else if (data.service === "set_page") {
-      this.log.debug(`set_page ${JSON.stringify(data.service_data.page)}`);
-      if (typeof data.service_data.page === "object") {
-        this.adapter.setState(
-          "control.data",
-          {
-            val: data.service_data.page.title,
-            ack: true
-          },
-          () => {
-            this.adapter.setState("control.command", {
-              val: "changedView",
-              ack: true
-            });
-          }
-        );
-      }
     } else if (data.service.startsWith("set_") && data.service !== "set_datetime") {
       this.log.debug(`${data.service}: ${id} = ${data.service_data[data.service.substring(4)]}`);
       let val = data.service_data[data.service.substring(4)];
@@ -846,11 +796,16 @@ class WebServer {
       this.adapter.setForeignState(id, data.service_data.message, false, { user }, () => {
         this._sendResponse(ws, data.id);
       });
+    } else if (data.service === "update_entity") {
+      this.log.debug(`update_entity ${entity_id}`);
+      await this._getStatesForEntity(entity);
+      this.updateEntityInFrontend(entity);
+      this._sendResponse(ws, data.id);
     } else {
       this.log.warn(`Unknown service: ${data.service} (${JSON.stringify(data)})`);
       ws.send(
         JSON.stringify({
-          id,
+          id: data.id,
           type: "result",
           success: false,
           error: { code: "not_found", message: "Service not found." }
@@ -894,6 +849,14 @@ class WebServer {
     for (const id of ids) {
       if (!entityData.entityId2Entity[id]) {
         this.log.warn(`Unknown entity: ${id} for service call ${JSON.stringify(data)}`);
+        ws.send(
+          JSON.stringify({
+            id: data.id,
+            type: "result",
+            success: false,
+            error: { code: "not_found", message: `Entity ${id} not found.` }
+          })
+        );
       } else {
         await this._processSingleCall(ws, data, id);
       }
@@ -1367,7 +1330,7 @@ class WebServer {
         this.log.debug(`Add static card: ${file} as ${"js"}`);
         this._ressourceConfig.push({
           type: "module",
-          url: `/cards/_static_${file}`
+          url: (0, import_cards.staticCardUrl)(file)
         });
       }
       const list = await this.adapter.readDirAsync(this.adapter.namespace, "/cards/");
@@ -1616,7 +1579,7 @@ class WebServer {
         nLines.push(`<script>
 ${hideScript.join("\n")}
 </script>`);
-        nLines.push(`<script type="module">import('/cards/_static_browser_mod.js');</script>`);
+        nLines.push(`<script type="module">import('${(0, import_cards.staticCardUrl)("browser_mod.js")}');</script>`);
       }
       if (template) {
         continue;
@@ -2289,9 +2252,6 @@ ${hideScript.join("\n")}
     this._app.get("/api/history/period/:start", async (req, res) => {
       void this._modules.history.processRequest(req, res);
     });
-    this._app.get("/api/person/*person", async (req, res) => {
-      this._modules.person.processRequest(req, res);
-    });
     this._app.get("/api/camera_proxy_stream/:entity_id", async (req, res) => {
       await this._modules.image.replyWithImage(req, res);
     });
@@ -2819,15 +2779,6 @@ ${hideScript.join("\n")}
         this._sendResponse(ws, message.id);
       } else if (message.type === "lovelace/resources") {
         this._sendResponse(ws, message.id, this._ressourceConfig);
-      } else if (message.type === "camera_thumbnail") {
-        this.log.warn(`camera_thumbnail ${message.entity_id} deprecated!!!`);
-        try {
-          const data = await this._modules.image.getImage(message.entity_id, null, null);
-          this._sendResponse(ws, message.id, data);
-        } catch (err) {
-          this.log.warn(`Error in camera_thumbnail: ${err} - ${err.stack}`);
-          this._sendResponse(ws, message.id);
-        }
       } else if (message.type === "call_service") {
         await this._processCall(ws, message);
       } else if (message.type === "render_template") {
@@ -2838,8 +2789,6 @@ ${hideScript.join("\n")}
           message.id,
           Object.keys(entityData.services).map((domain) => ({ domain, level: 30 }))
         );
-      } else if (message.type === "sensor/numeric_device_classes") {
-        this._sendResponse(ws, message.id, { numeric_device_classes: import_genericConverter.numericDeviceClasses });
       } else if (message.type === "sensor/device_class_convertible_units") {
         this._sendResponse(ws, message.id, {
           units: CONVERTIBLE_UNITS[message.device_class] || []

@@ -112,9 +112,6 @@ class ConversationModule {
         preferred_pipeline: this.getVoiceAssistantId()
       });
       return true;
-    } else if (message.type === "conversation/agent/info") {
-      this._sendResponse(ws, message.id, { onboarding: null, attribution: null });
-      return true;
     } else if (message.type === "assist_pipeline/run") {
       ws._subscribes.conversations = ws._subscribes.conversations || [];
       const conversationId = message.conversation_id || Date.now();

@@ -7,16 +7,17 @@ import * as utils from './entities/utils';
 import { BaseEntity } from './entities/baseEntity';
 import { getFriendlyName } from './entities/friendly_name';
 import { computeSunState } from './sun';
-import { iobState2EntityState, numericDeviceClasses as NUMERIC_DEVICE_CLASSES } from './converters/genericConverter';
+import { iobState2EntityState } from './converters/genericConverter';
 import { Converter } from './converters/converter';
 import * as converterSwitch from './converters/switch';
+import * as converterTimer from './converters/timer';
 import * as converterBinarySensors from './converters/binary_sensor';
 import * as converterSensors from './converters/sensor';
 import * as converterGeoLocation from './converters/geo_location';
 import * as converterDeviceTracker from './converters/deviceTracker';
 import { buildManualViaConverter, syntheticControlStates } from './converters/syntheticControl';
 import { applyCustomAttributes, collectCustomAttributes } from './converters/manualStates';
-import { cacheBuster, detectCardVersion } from './cards';
+import { cacheBuster, detectCardVersion, staticCardUrl } from './cards';
 import * as converterDatetime from './converters/input_datetime';
 import * as converterAlarmCP from './converters/alarm_control_panel';
 import * as converterInputSelect from './converters/input_select';
@@ -875,46 +876,7 @@ class WebServer {
             } else if (entityType === 'switch') {
                 return converterSwitch.processManualEntity(id, obj, entity, this._objectData.objects, custom);
             } else if (entityType === 'timer') {
-                // - timer => STATE idle/paused/active, attributes: [remaining]
-                entity.context.STATE = { getId: null, setId: null, attribute: 'state' as const }; // will be simulated
-                entity.context.lastValue = null;
-                entity.attributes.remaining = 0;
-                entity.context.ATTRIBUTES = [
-                    {
-                        attribute: 'remaining',
-                        getId: id,
-                        setId: id,
-                        getParser: function (entity, attr, state) {
-                            state = state || { val: null };
-                            // - timer => STATE idle/paused/active, attributes: [remaining]
-                            // if 0 => timer is off
-                            if (!state.val) {
-                                entity.state = 'idle';
-                            } else if (entity.context.lastValue === null) {
-                                entity.state = 'active';
-                            } else if (entity.context.lastValue === state.val) {
-                                // pause
-                                entity.state = 'paused';
-                            } else {
-                                // active
-                                entity.state = 'active';
-                            }
-
-                            entity.context.lastValue = state.val;
-
-                            // seconds to D HH:MM:SS
-                            if (typeof state.val === 'string' && state.val.indexOf(':') !== -1) {
-                                entity.attributes.remaining = state.val;
-                            } else {
-                                state.val = parseInt(state.val as string, 10);
-                                const hours = Math.floor(state.val / 3600);
-                                const minutes = Math.floor((state.val % 3600) / 60);
-                                const seconds = state.val % 60;
-                                entity.attributes.remaining = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                            }
-                        },
-                    },
-                ];
+                return converterTimer.processManualEntity(id, obj, entity, this._objectData.objects, custom);
             }
 
             entity.addID2entity(id);
@@ -996,29 +958,6 @@ class WebServer {
             }
             this.log.warn(`Cannot find attribute temperature in ${entity_id}`);
             this._sendResponse(ws, data.id);
-        } else if (data.service === 'set_operation_mode') {
-            this.log.debug(`set_operation_mode ${data.service_data.operation_mode}`);
-
-            //TODO: just sending false here probably is wrong. The call is supported only be Waterheater entity. So... not really used, right now?
-            this.adapter.setForeignState(id, false, false, { user }, () => this._sendResponse(ws, data.id));
-        } else if (data.service === 'set_page') {
-            this.log.debug(`set_page ${JSON.stringify(data.service_data.page)}`);
-
-            if (typeof data.service_data.page === 'object') {
-                this.adapter.setState(
-                    'control.data',
-                    {
-                        val: data.service_data.page.title,
-                        ack: true,
-                    },
-                    () => {
-                        this.adapter.setState('control.command', {
-                            val: 'changedView',
-                            ack: true,
-                        });
-                    },
-                );
-            }
         } else if (data.service.startsWith('set_') && data.service !== 'set_datetime') {
             this.log.debug(`${data.service}: ${id} = ${data.service_data[data.service.substring(4)]}`);
             // set_value          => service_data.value
@@ -1065,12 +1004,20 @@ class WebServer {
             this.adapter.setForeignState(id, data.service_data.message, false, { user }, () => {
                 this._sendResponse(ws, data.id);
             });
+        } else if (data.service === 'update_entity') {
+            // The refresh buttons of the frontend (more-info dialog, developer tools) call
+            // homeassistant.update_entity. We have no polling to trigger, so re-read the states of
+            // the entity from the ioBroker database and push the result to the frontend.
+            this.log.debug(`update_entity ${entity_id}`);
+            await this._getStatesForEntity(entity);
+            this.updateEntityInFrontend(entity);
+            this._sendResponse(ws, data.id);
         } else {
             this.log.warn(`Unknown service: ${data.service} (${JSON.stringify(data)})`);
             //{'id": 21, "type": "result", "success": false, "error": {"code": "not_found", "message": "Service not found."}}
             ws.send(
                 JSON.stringify({
-                    id,
+                    id: data.id,
                     type: 'result',
                     success: false,
                     error: { code: 'not_found', message: 'Service not found.' },
@@ -1121,6 +1068,15 @@ class WebServer {
         for (const id of ids) {
             if (!entityData.entityId2Entity[id]) {
                 this.log.warn(`Unknown entity: ${id} for service call ${JSON.stringify(data)}`);
+                // Answer anyway, an unanswered call leaves the frontend waiting forever.
+                ws.send(
+                    JSON.stringify({
+                        id: data.id,
+                        type: 'result',
+                        success: false,
+                        error: { code: 'not_found', message: `Entity ${id} not found.` },
+                    }),
+                );
             } else {
                 await this._processSingleCall(ws, data, id);
             }
@@ -1685,7 +1641,7 @@ class WebServer {
                 this.log.debug(`Add static card: ${file} as ${'js'}`);
                 this._ressourceConfig.push({
                     type: 'module',
-                    url: `/cards/_static_${file}`,
+                    url: staticCardUrl(file),
                 });
             }
 
@@ -1993,7 +1949,7 @@ class WebServer {
                 // reload, because Lovelace resources are only loaded on dashboard panels.
                 // The module self-inits behind a `window.browser_mod` guard, so the extra import
                 // on dashboard pages is a harmless no-op (cached by URL).
-                nLines.push(`<script type="module">import('/cards/_static_browser_mod.js');</script>`);
+                nLines.push(`<script type="module">import('${staticCardUrl('browser_mod.js')}');</script>`);
                 //deprecated.
                 //nLines.push('<script>\n' + fs.readFileSync(__dirname + '/../assets/index.js').toString('utf-8') + hideScript.join('\n') + '\n</script>');
             }
@@ -2809,9 +2765,6 @@ class WebServer {
         this._app.get('/api/history/period/:start', async (req: any, res: any) => {
             void this._modules.history.processRequest(req, res);
         });
-        this._app.get('/api/person/*person', async (req: any, res: any) => {
-            this._modules.person.processRequest(req, res);
-        });
         this._app.get('/api/camera_proxy_stream/:entity_id', async (req: any, res: any) => {
             await this._modules.image.replyWithImage(req, res);
         });
@@ -3434,15 +3387,6 @@ class WebServer {
                 this._sendResponse(ws, message.id);
             } else if (message.type === 'lovelace/resources') {
                 this._sendResponse(ws, message.id, this._ressourceConfig);
-            } else if (message.type === 'camera_thumbnail') {
-                this.log.warn(`camera_thumbnail ${message.entity_id} deprecated!!!`);
-                try {
-                    const data = await this._modules.image.getImage(message.entity_id, null, null);
-                    this._sendResponse(ws, message.id, data);
-                } catch (err: any) {
-                    this.log.warn(`Error in camera_thumbnail: ${err} - ${err.stack}`);
-                    this._sendResponse(ws, message.id);
-                }
             } else if (message.type === 'call_service') {
                 //{"type":"call_service","domain":"zone","service":"turn_off","service_data":{"entity_id":"zone.home"},"id":18}
                 await this._processCall(ws, message);
@@ -3455,9 +3399,6 @@ class WebServer {
                     message.id,
                     Object.keys(entityData.services).map(domain => ({ domain, level: 30 })),
                 );
-            } else if (message.type === 'sensor/numeric_device_classes') {
-                //it seems frontend now asks backend for what device_classes are numeric. Ok. Let's use that. ;-)
-                this._sendResponse(ws, message.id, { numeric_device_classes: NUMERIC_DEVICE_CLASSES });
             } else if (message.type === 'sensor/device_class_convertible_units') {
                 // Units a given device_class can be displayed in (used by the energy dashboard setup).
                 this._sendResponse(ws, message.id, {

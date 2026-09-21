@@ -49,43 +49,12 @@ class MediaSourceModule {
       this.sendResponse(ws, message.id, await this._resolve(message.media_content_id));
       return true;
     }
-    if (type === "image/list") {
-      this.sendResponse(ws, message.id, await this._listImages());
-      return true;
-    }
     if (type === "image/delete") {
       await this._deleteImage(message.image_id);
       this.sendResponse(ws, message.id, null);
       return true;
     }
     return false;
-  }
-  /**
-   * List the metadata of all uploaded images (used by the frontend image manager).
-   *
-   * @returns array of { id, filesize, name, uploaded_at, content_type }
-   */
-  async _listImages() {
-    const result = [];
-    let files = [];
-    try {
-      files = await this.adapter.readDirAsync(this.adapter.namespace, IMAGE_FOLDER);
-    } catch {
-      return result;
-    }
-    for (const f of files) {
-      if (f.isDir || !f.file.endsWith(".json")) {
-        continue;
-      }
-      try {
-        const meta = JSON.parse(
-          (await this.adapter.readFileAsync(this.adapter.namespace, `${IMAGE_FOLDER}/${f.file}`)).file.toString()
-        );
-        result.push(meta);
-      } catch {
-      }
-    }
-    return result;
   }
   /**
    * Delete an uploaded image (binary + its .json sidecar). Errors are ignored so a missing file

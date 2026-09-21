@@ -21,6 +21,7 @@ __export(panels_exports, {
   default: () => panels_default
 });
 module.exports = __toCommonJS(panels_exports);
+var import_cards = require("./cards");
 const panels = {
   lovelace: {
     component_name: "lovelace",
@@ -98,7 +99,7 @@ const panels = {
     config: {
       _panel_custom: {
         name: "browser-mod-browser-panel",
-        js_url: "/cards/_static_browser_mod_browser_panel.js"
+        js_url: (0, import_cards.staticCardUrl)("browser_mod_browser_panel.js")
       }
     },
     url_path: "browser-mod",
@@ -114,7 +115,7 @@ const panels = {
     config: {
       _panel_custom: {
         name: "browser-mod-config-panel",
-        js_url: "/cards/_static_browser_mod_config_panel.js"
+        js_url: (0, import_cards.staticCardUrl)("browser_mod_config_panel.js")
       }
     },
     url_path: "browser-mod-config",

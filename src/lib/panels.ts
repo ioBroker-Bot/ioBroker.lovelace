@@ -1,3 +1,5 @@
+import { staticCardUrl } from './cards';
+
 /** Fixed panels for frontend. Will show up in sidebar. */
 const panels = {
     lovelace: {
@@ -76,7 +78,7 @@ const panels = {
         config: {
             _panel_custom: {
                 name: 'browser-mod-browser-panel',
-                js_url: '/cards/_static_browser_mod_browser_panel.js',
+                js_url: staticCardUrl('browser_mod_browser_panel.js'),
             },
         },
         url_path: 'browser-mod',
@@ -92,7 +94,7 @@ const panels = {
         config: {
             _panel_custom: {
                 name: 'browser-mod-config-panel',
-                js_url: '/cards/_static_browser_mod_config_panel.js',
+                js_url: staticCardUrl('browser_mod_config_panel.js'),
             },
         },
         url_path: 'browser-mod-config',

@@ -83,6 +83,15 @@ After that checkout modified version in `./build` folder. Then.
 	### **WORK IN PROGRESS**
     ### for next frontend update, update of auto entities card will be necessary!
 -->
+### **WORK IN PROGRESS**
+* (Garfonso/Claude) Removed endpoints and services that neither the frontend nor Home Assistant offer any more (camera_thumbnail, conversation/agent/info, /api/person, sensor/numeric_device_classes, image/list, fan.set_speed).
+* (Garfonso/Claude) The action picker only offers services the adapter can really execute.
+* (Garfonso/Claude) Removed the old shopping list api, the shopping list has been a todo list for a long time.
+* (Garfonso/Claude) The buttons of a timer entity work now (start, cancel, finish, change).
+* (Garfonso/Claude) Shipped cards (browser_mod) get the adapter version in their url, so an update is loaded instead of the cached copy.
+* (Garfonso/Claude) Service calls that fail now always answer, instead of leaving the frontend waiting.
+* (Garfonso/Claude) homeassistant.update_entity rereads the states of the entity instead of failing.
+
 ### 7.0.0 (2026-09-18)
 * (Garfonso/Claude) Fixed custom cards that fetch history directly (e.g. the windrose card) crashing with "TypeError: t.callback is not a function": a one-shot history request was answered like a subscription. (#722)
 * (Garfonso/Claude) `instances.hideSidebar` / `hideHeader` no longer fall back to the default on an adapter restart. (#733)

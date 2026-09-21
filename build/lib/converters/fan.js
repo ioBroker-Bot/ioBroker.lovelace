@@ -105,15 +105,6 @@ function augmentPresetMode(presetModeId, stateId, entity, objects) {
     return adapterData.adapter.setForeignStateAsync(command.setId, target, false, { user });
   };
   entity.context.COMMANDS.push({
-    service: "set_speed",
-    setId: presetModeId,
-    parseCommand: async (ent, command, data, user) => {
-      var _a2;
-      const sd = data.service_data;
-      return executePresetChange(ent, command, (_a2 = sd.speed) != null ? _a2 : sd.preset_mode, user);
-    }
-  });
-  entity.context.COMMANDS.push({
     service: "set_preset_mode",
     setId: presetModeId,
     parseCommand: async (ent, command, data, user) => {
@@ -226,18 +217,6 @@ function processManualEntity(id, _obj, entity, objects, custom) {
   return [entity];
 }
 adapterData.services.fan = {
-  set_speed: {
-    name: "Set speed",
-    description: "Set the speed of the fan.",
-    fields: {
-      speed: {
-        description: "The speed to set as number.",
-        required: true,
-        selector: { number: null }
-      }
-    },
-    target: { entity: [{ domain: ["fan"] }] }
-  },
   set_preset_mode: {
     name: "Set preset mode",
     description: "Set the preset mode of the fan.",

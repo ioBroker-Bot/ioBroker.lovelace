@@ -1,6 +1,7 @@
 /**
  * Helpers around the custom cards a user uploaded into the adapter's `cards` folder.
  */
+import { readFileSync } from 'node:fs';
 
 /** A version number as cards write it: 1.2, 1.2.3, 1.2.3-beta.1. */
 const SEMVER = '(\\d+\\.\\d+(?:\\.\\d+)?(?:[-+][0-9A-Za-z.]+)?)';
@@ -71,4 +72,23 @@ export interface FileStamp {
 export function cacheBuster(file: FileStamp): string {
     const version = file.modifiedAt || file.stats?.mtimeMs || file.stats?.size;
     return version ? `?v=${version}` : '';
+}
+
+/** Version of this adapter, used as the cache marker of the cards we ship ourselves. */
+const ADAPTER_VERSION: string = (
+    JSON.parse(readFileSync(`${__dirname}/../../package.json`, 'utf8')) as { version: string }
+).version;
+
+/**
+ * Url of a card that ships with the adapter (`hass_frontend/static_cards`, e.g. browser_mod).
+ *
+ * Those files keep their name forever and are replaced by an adapter update, so the url carries
+ * the adapter version. Without it the browser would keep the copy of the previous adapter version
+ * in its cache, and the url could not be cached for good either.
+ *
+ * @param file - file name below `static_cards`
+ * @returns the url to hand to the frontend
+ */
+export function staticCardUrl(file: string): string {
+    return `/cards/_static_${file}?v=${ADAPTER_VERSION}`;
 }

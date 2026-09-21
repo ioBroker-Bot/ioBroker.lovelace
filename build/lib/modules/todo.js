@@ -93,7 +93,7 @@ class TodoModule {
    */
   async processMessage(ws, message) {
     const msgType = message.type;
-    if (msgType && (msgType.startsWith("todo/") || msgType.startsWith("shopping_list/"))) {
+    if (msgType == null ? void 0 : msgType.startsWith("todo/")) {
       if (msgType === "todo/item/subscribe") {
         ws._subscribes.todo = ws._subscribes.todo || [];
         const result = [
@@ -139,44 +139,6 @@ class TodoModule {
         }
         this._storeTodolist(todoList);
         this._publishUpdate(todoList);
-      } else if (msgType === "shopping_list/items/add") {
-        const entity = this.entityData.entityId2Entity["todo.shoppinglist"];
-        const todoList = await this._getTodoList(entity);
-        todoList.items.push({
-          name: message.name,
-          uid: import_node_crypto.default.randomUUID(),
-          status: TodoItemStatus.NeedsAction,
-          due: null,
-          description: null
-        });
-        this._storeTodolist(todoList);
-        this._publishUpdate(todoList);
-        this.server._sendResponse(ws, message.id);
-        this.server._sendUpdate("shopping_list_updated");
-      } else if (msgType === "shopping_list/items/clear") {
-        const entity = this.entityData.entityId2Entity["todo.shoppinglist"];
-        const todoList = await this._getTodoList(entity);
-        todoList.items = [];
-        this._storeTodolist(todoList);
-        this._publishUpdate(todoList);
-        this.server._sendResponse(ws, message.id);
-        this.server._sendUpdate("shopping_list_updated");
-      } else if (msgType === "shopping_list/items/update") {
-        const entity = this.entityData.entityId2Entity["todo.shoppinglist"];
-        const todoList = await this._getTodoList(entity);
-        const item = todoList.items.find((item2) => item2.uid === message.item_id);
-        if (item) {
-          if (message.name !== void 0) {
-            item.summary = message.name;
-          }
-          if (message.complete !== void 0) {
-            item.status = message.complete ? TodoItemStatus.Completed : TodoItemStatus.NeedsAction;
-          }
-          this._storeTodolist(todoList);
-          this._publishUpdate(todoList);
-          this.server._sendResponse(ws, message.id);
-          this.server._sendUpdate("shopping_list_updated");
-        }
       }
       return true;
     }
