@@ -5,10 +5,9 @@ import type http from 'node:http';
 import type https from 'node:https';
 
 import ApiServer from './lib/server';
+import { parseThemes } from './lib/themesYaml';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const words = require('../admin/words');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const yaml = require('js-yaml') as { load(s: string): unknown };
 
 /**
  * Format the get/set ids of a STATE or ATTRIBUTE for the admin entities table.
@@ -232,8 +231,7 @@ function startAdapter(options?: Partial<ioBroker.AdapterOptions>): ioBroker.Adap
                                 : (adapter.config as { themes?: string }).themes || '';
                         let names: string[] = [];
                         try {
-                            const parsed = yaml.load(themesYaml) as Record<string, unknown> | undefined | null;
-                            names = parsed && typeof parsed === 'object' ? Object.keys(parsed) : [];
+                            names = Object.keys(parseThemes(themesYaml));
                         } catch {
                             names = [];
                         }

@@ -1,5 +1,5 @@
 "use strict";
-const yaml = require("js-yaml");
+var import_themesYaml = require("../themesYaml");
 class ThemesModule {
   adapter;
   sendUpdate;
@@ -28,15 +28,10 @@ class ThemesModule {
    */
   async init() {
     try {
-      this._themes = yaml.safeLoad(this.adapter.config.themes || "") || {};
-    } catch (depError) {
-      const message = depError instanceof Error ? depError.message : String(depError);
-      if (message.includes("yaml.safeLoad") && message.includes("removed")) {
-        this._themes = yaml.load(this.adapter.config.themes || "") || {};
-      } else {
-        this.adapter.log.error(`Cannot parse themes: ${message}`);
-        this._themes = {};
-      }
+      this._themes = (0, import_themesYaml.parseThemes)(this.adapter.config.themes);
+    } catch (error) {
+      this.adapter.log.error(`Cannot parse themes: ${error instanceof Error ? error.message : String(error)}`);
+      this._themes = {};
     }
     const states = { default: "default" };
     for (const themeName of Object.keys(this._themes)) {

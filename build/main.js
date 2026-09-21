@@ -25,8 +25,8 @@ var import_express = __toESM(require("express"));
 var utils = __toESM(require("@iobroker/adapter-core"));
 var import_webserver = require("@iobroker/webserver");
 var import_server = __toESM(require("./lib/server"));
+var import_themesYaml = require("./lib/themesYaml");
 const words = require("../admin/words");
-const yaml = require("js-yaml");
 function formatEntityIds(obj) {
   if (!obj) {
     return "";
@@ -147,8 +147,7 @@ function startAdapter(options) {
             const themesYaml = typeof sent === "string" && sent.trim() ? sent : adapter.config.themes || "";
             let names = [];
             try {
-              const parsed = yaml.load(themesYaml);
-              names = parsed && typeof parsed === "object" ? Object.keys(parsed) : [];
+              names = Object.keys((0, import_themesYaml.parseThemes)(themesYaml));
             } catch {
               names = [];
             }
