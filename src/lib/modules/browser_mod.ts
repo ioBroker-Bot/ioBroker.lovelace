@@ -62,13 +62,16 @@ type AdapterWithConfig = ioBroker.Adapter & {
  * the frontend shows a "Browser Mod version mismatch" reload prompt. Bump this whenever the
  * shipped browser_mod frontend is updated.
  */
-const BROWSER_MOD_VERSION = '2.13.5';
+const BROWSER_MOD_VERSION = '3.2.3';
 
 /**
  * Support for browser_mod integration.
  * This is now installed with lovelace by default to control the frontends from ioBroker states.
  */
 class BrowserModModule {
+    /** Version reported to the browser_mod frontend, see BROWSER_MOD_VERSION. */
+    static readonly VERSION = BROWSER_MOD_VERSION;
+
     private adapter: AdapterWithConfig;
     private objects: Record<string, unknown>;
     private clients: Record<string, ClientEntry>;

@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import { readFileSync } from 'node:fs';
+import { detectCardVersion } from '../cards';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const BrowserModModule = require('../modules/browser_mod');
@@ -329,5 +331,16 @@ describe('modules/browser_mod default dashboard resolution', function () {
         const mod = makeModule();
         expect(mod.getDefaultPanel({} as any)).to.equal(undefined);
         expect(mod.getGlobalDefaultPanel()).to.equal(undefined);
+    });
+});
+
+describe('modules/browser_mod version', function () {
+    it('reports the version of the browser_mod frontend we ship', function () {
+        // The frontend compares both and shows a "version mismatch" reload prompt when they differ.
+        // Updating hass_frontend/static_cards/browser_mod*.js means bumping BROWSER_MOD_VERSION too.
+        const card = readFileSync(`${__dirname}/../../../hass_frontend/static_cards/browser_mod.js`, 'utf8');
+        const shipped = detectCardVersion(card);
+        expect(shipped, 'no version found in the shipped browser_mod.js').to.be.a('string');
+        expect(BrowserModModule.VERSION).to.equal(shipped);
     });
 });
