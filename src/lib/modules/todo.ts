@@ -61,7 +61,6 @@ interface WsServer {
 
 interface ServerWithRespond {
     _sendResponse(ws: unknown, id: unknown, result?: unknown): void;
-    _sendUpdate(type: string): void;
 }
 
 /**
@@ -144,7 +143,7 @@ class TodoModule {
      */
     async processMessage(ws: WsClient, message: Record<string, unknown>): Promise<boolean> {
         const msgType = message.type as string;
-        if (msgType && (msgType.startsWith('todo/') || msgType.startsWith('shopping_list/'))) {
+        if (msgType?.startsWith('todo/')) {
             if (msgType === 'todo/item/subscribe') {
                 ws._subscribes.todo = ws._subscribes.todo || [];
 
@@ -193,44 +192,6 @@ class TodoModule {
                 }
                 this._storeTodolist(todoList);
                 this._publishUpdate(todoList);
-            } else if (msgType === 'shopping_list/items/add') {
-                const entity = this.entityData.entityId2Entity['todo.shoppinglist'];
-                const todoList = await this._getTodoList(entity);
-                todoList.items.push({
-                    name: message.name as string,
-                    uid: crypto.randomUUID(),
-                    status: TodoItemStatus.NeedsAction,
-                    due: null,
-                    description: null,
-                });
-                this._storeTodolist(todoList);
-                this._publishUpdate(todoList);
-                this.server._sendResponse(ws, message.id);
-                this.server._sendUpdate('shopping_list_updated');
-            } else if (msgType === 'shopping_list/items/clear') {
-                const entity = this.entityData.entityId2Entity['todo.shoppinglist'];
-                const todoList = await this._getTodoList(entity);
-                todoList.items = [];
-                this._storeTodolist(todoList);
-                this._publishUpdate(todoList);
-                this.server._sendResponse(ws, message.id);
-                this.server._sendUpdate('shopping_list_updated');
-            } else if (msgType === 'shopping_list/items/update') {
-                const entity = this.entityData.entityId2Entity['todo.shoppinglist'];
-                const todoList = await this._getTodoList(entity);
-                const item = todoList.items.find(item => item.uid === message.item_id);
-                if (item) {
-                    if (message.name !== undefined) {
-                        item.summary = message.name as string;
-                    }
-                    if (message.complete !== undefined) {
-                        item.status = message.complete ? TodoItemStatus.Completed : TodoItemStatus.NeedsAction;
-                    }
-                    this._storeTodolist(todoList);
-                    this._publishUpdate(todoList);
-                    this.server._sendResponse(ws, message.id);
-                    this.server._sendUpdate('shopping_list_updated');
-                }
             }
             return true;
         }
