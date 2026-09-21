@@ -37,7 +37,7 @@ type ResolveUserFn = (opts: {
  * Serves images referenced by entities (camera snapshots, weather icons, picture entities). Reads
  * the image from the entity's ioBroker state (data-URL, http(s) URL, or ioBroker file), or directly
  * from an `/adapter/...` file URL, and returns it base64-encoded. Also backs the camera proxy HTTP
- * routes and the deprecated `camera_thumbnail` WebSocket message.
+ * routes.
  */
 class ImageModule {
     private adapter: ioBroker.Adapter;

@@ -18,7 +18,7 @@ const adapterData = require('../../../lib/dataSingleton') as {
  * - entity.attributes.preset_modes list
  * - attr.map2lovelace / attr.map2iob for value translation
  * - attr.getParser to update entity.state and entity.attributes.preset_mode on state changes
- * - COMMANDS: set_speed, set_preset_mode, turn_off
+ * - COMMANDS: set_preset_mode, turn_off
  *
  * @param presetModeId - ioBroker state id for the preset_mode
  * @param stateId - ioBroker state id for the on/off power state (used by turn_off)
@@ -112,15 +112,6 @@ function augmentPresetMode(
         }
         return adapterData.adapter.setForeignStateAsync(command.setId!, target as ioBroker.StateValue, false, { user });
     };
-
-    entity.context.COMMANDS.push({
-        service: 'set_speed',
-        setId: presetModeId,
-        parseCommand: async (ent, command, data: ServiceCallData, user): Promise<unknown> => {
-            const sd = data.service_data;
-            return executePresetChange(ent, command, sd.speed ?? sd.preset_mode, user);
-        },
-    });
 
     entity.context.COMMANDS.push({
         service: 'set_preset_mode',
@@ -268,18 +259,6 @@ export function processManualEntity(
 }
 
 adapterData.services.fan = {
-    set_speed: {
-        name: 'Set speed',
-        description: 'Set the speed of the fan.',
-        fields: {
-            speed: {
-                description: 'The speed to set as number.',
-                required: true,
-                selector: { number: null },
-            },
-        },
-        target: { entity: [{ domain: ['fan'] }] },
-    },
     set_preset_mode: {
         name: 'Set preset mode',
         description: 'Set the preset mode of the fan.',

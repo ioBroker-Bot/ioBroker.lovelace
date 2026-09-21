@@ -64,19 +64,18 @@ describe('converters/fan', function () {
             expect(entity.attributes.preset_modes).to.deep.equal(['off', 'low', 'medium', 'high']);
         });
 
-        it('registers set_speed, set_preset_mode, turn_off commands', function () {
+        it('registers set_preset_mode, turn_off commands', function () {
             const entity = makeEntityWithFan();
             const services = entity.context.COMMANDS.map(c => c.service);
-            expect(services).to.include('set_speed');
             expect(services).to.include('set_preset_mode');
             expect(services).to.include('turn_off');
+            // fan.set_speed was removed from Home Assistant in 2022.4 and is not offered any more.
+            expect(services).to.not.include('set_speed');
         });
 
-        it('set_speed and set_preset_mode use preset_mode state id as setId', function () {
+        it('set_preset_mode uses preset_mode state id as setId', function () {
             const entity = makeEntityWithFan();
-            const setSpeed = entity.context.COMMANDS.find(c => c.service === 'set_speed')!;
             const setPreset = entity.context.COMMANDS.find(c => c.service === 'set_preset_mode')!;
-            expect(setSpeed.setId).to.equal(PRESET_ID);
             expect(setPreset.setId).to.equal(PRESET_ID);
         });
 
@@ -169,11 +168,11 @@ describe('converters/fan', function () {
 
         it('accepts speed field as alias for preset_mode', async function () {
             const entity = makeEntityWithFan();
-            const cmd = entity.context.COMMANDS.find(c => c.service === 'set_speed')!;
+            const cmd = entity.context.COMMANDS.find(c => c.service === 'set_preset_mode')!;
             await cmd.parseCommand!(
                 entity,
                 cmd,
-                { id: 1, service: 'set_speed', service_data: { speed: 'medium' } },
+                { id: 1, service: 'set_preset_mode', service_data: { speed: 'medium' } },
                 'user',
             );
             expect(setForeignStateAsync.calledWith(PRESET_ID, 2, false, { user: 'user' })).to.be.true;

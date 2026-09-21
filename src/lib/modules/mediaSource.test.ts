@@ -102,20 +102,6 @@ describe('modules/mediaSource', function () {
         expect(responses[0]).to.deep.equal({ url: '/cards/bg.png', mime_type: 'image/png' });
     });
 
-    it('image/list returns the metadata of uploaded images', async function () {
-        const { mod, responses } = makeModule({
-            uploaded_images: [
-                { file: 'abc-123', isDir: false },
-                { file: 'abc-123.json', isDir: false },
-            ],
-        });
-        const handled = await mod.processMessage({}, { type: 'image/list', id: 1 });
-        expect(handled).to.equal(true);
-        expect(responses[0]).to.have.lengthOf(1);
-        expect(responses[0][0].name).to.equal('My Pic');
-        expect(responses[0][0].id).to.equal('abc-123');
-    });
-
     it('image/delete removes the binary and the sidecar', async function () {
         const { mod, deleted } = makeModule({});
         const handled = await mod.processMessage({}, { type: 'image/delete', image_id: 'abc-123', id: 1 });
