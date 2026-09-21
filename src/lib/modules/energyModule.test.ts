@@ -180,6 +180,63 @@ describe('modules/energyModule cost sensors', function () {
         });
     });
 
+    it('announces the costs of the configuration reported in the forum', async function () {
+        // Grid with a fixed price for import and export, next to solar, a battery and devices -
+        // the costs stayed at 0 before the adapter calculated them itself.
+        const { mod, responses } = makeModule({
+            energy_sources: [
+                {
+                    type: 'solar',
+                    stat_energy_from: 'sensor.pv_energy',
+                    config_entry_solar_forecast: null,
+                    stat_rate: 'sensor.pv_power',
+                },
+                {
+                    type: 'battery',
+                    stat_energy_from: 'sensor.storage_discharge',
+                    stat_energy_to: 'sensor.storage_charge',
+                    power_config: { stat_rate: 'sensor.storage_power' },
+                    stat_soc: 'sensor.storage_soc',
+                    stat_rate: 'sensor.storage_power',
+                },
+                {
+                    type: 'grid',
+                    stat_energy_from: 'sensor.grid_import',
+                    stat_energy_to: 'sensor.grid_export',
+                    stat_cost: null,
+                    stat_compensation: null,
+                    entity_energy_price: null,
+                    number_energy_price: 0.2801,
+                    entity_energy_price_export: null,
+                    number_energy_price_export: 0.0634,
+                    cost_adjustment_day: 0,
+                    power_config: { stat_rate: 'sensor.grid_power' },
+                    stat_rate: 'sensor.grid_power',
+                },
+            ],
+            device_consumption: [
+                { stat_consumption: 'sensor.wallbox', stat_rate: 'sensor.wallbox_power', name: 'Wallbox' },
+            ],
+            device_consumption_water: [],
+        });
+        await mod.init();
+
+        mod.processMessage({}, { type: 'energy/info', id: 1 });
+        // Only the grid has a price; solar and battery carry no costs.
+        expect(responses[0].cost_sensors).to.deep.equal({
+            'sensor.grid_import': 'sensor.grid_import_cost',
+            'sensor.grid_export': 'sensor.grid_export_compensation',
+        });
+        expect(mod.getCostStatistic('sensor.grid_import_cost')).to.deep.equal({
+            sourceStatisticId: 'sensor.grid_import',
+            price: 0.2801,
+        });
+        expect(mod.getCostStatistic('sensor.grid_export_compensation')).to.deep.equal({
+            sourceStatisticId: 'sensor.grid_export',
+            price: 0.0634,
+        });
+    });
+
     it('leaves a configured cost meter alone', async function () {
         const { mod, responses } = makeModule({
             energy_sources: [

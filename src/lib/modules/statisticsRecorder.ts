@@ -237,6 +237,26 @@ class StatisticsRecorder {
      * @param message - the message from the frontend
      */
     /**
+     * The unit a price refers to.
+     *
+     * @param unitClass - unit class of the meter (energy or volume)
+     * @param priceEntityId - entity holding the price, if the price is not a fixed one
+     * @returns the unit, e.g. "kWh"; undefined when the meter is neither energy nor volume
+     */
+    private _priceUnit(unitClass: string | null, priceEntityId: string | undefined): string | undefined {
+        const fallback = unitClass === 'energy' ? 'kWh' : unitClass === 'volume' ? 'm³' : undefined;
+        if (!unitClass || !priceEntityId) {
+            return fallback;
+        }
+        const priceUnit = String(
+            this.dataSingleton.entityId2Entity[priceEntityId]?.attributes.unit_of_measurement ?? '',
+        )
+            .split('/')
+            .pop();
+        return priceUnit && UNIT_FACTORS[unitClass]?.[priceUnit] ? priceUnit : fallback;
+    }
+
+    /**
      * Build the statistics of a cost that Home Assistant would record with a cost sensor: the energy
      * consumed in each bucket, multiplied by the price of that bucket.
      *
@@ -284,6 +304,13 @@ class StatisticsRecorder {
             }
         }
 
+        // The price is per kWh (per m³ for gas and water), or per whatever unit a price entity names
+        // behind its slash ("EUR/Wh"). Home Assistant's cost sensor converts the meter into that unit
+        // first; without it a meter counting Wh would cost a thousand times too much.
+        const unitClass = unitClassForDeviceClass(source.attributes.device_class);
+        const priceUnit = this._priceUnit(unitClass, cost.priceEntityId);
+        const factor = conversionFactor(unitClass, source.attributes.unit_of_measurement, priceUnit) ?? 1;
+
         // The counter value per bucket, one bucket before the range so the first one gets a delta too.
         const series = (await this.getHistory(sourceId, start - step, end, step, 'max', user)) as {
             ts: number;
@@ -311,7 +338,7 @@ class StatisticsRecorder {
                 }
                 const bucket: StatValue = { start: series[i].ts, end: Math.min(series[i + 1]?.ts ?? end, end) };
                 const consumed = previous !== undefined && value >= previous ? value - previous : null;
-                const change = consumed !== null && price !== undefined ? consumed * price : null;
+                const change = consumed !== null && price !== undefined ? consumed * factor * price : null;
                 if (change !== null) {
                     total += change;
                 }
