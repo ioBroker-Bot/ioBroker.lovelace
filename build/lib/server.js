@@ -33,6 +33,7 @@ var import_sun = require("./sun");
 var import_genericConverter = require("./converters/genericConverter");
 var import_converter = require("./converters/converter");
 var converterSwitch = __toESM(require("./converters/switch"));
+var converterTimer = __toESM(require("./converters/timer"));
 var converterBinarySensors = __toESM(require("./converters/binary_sensor"));
 var converterSensors = __toESM(require("./converters/sensor"));
 var converterGeoLocation = __toESM(require("./converters/geo_location"));
@@ -682,38 +683,7 @@ class WebServer {
       } else if (entityType === "switch") {
         return converterSwitch.processManualEntity(id, obj, entity, this._objectData.objects, custom);
       } else if (entityType === "timer") {
-        entity.context.STATE = { getId: null, setId: null, attribute: "state" };
-        entity.context.lastValue = null;
-        entity.attributes.remaining = 0;
-        entity.context.ATTRIBUTES = [
-          {
-            attribute: "remaining",
-            getId: id,
-            setId: id,
-            getParser: function(entity2, attr, state) {
-              state = state || { val: null };
-              if (!state.val) {
-                entity2.state = "idle";
-              } else if (entity2.context.lastValue === null) {
-                entity2.state = "active";
-              } else if (entity2.context.lastValue === state.val) {
-                entity2.state = "paused";
-              } else {
-                entity2.state = "active";
-              }
-              entity2.context.lastValue = state.val;
-              if (typeof state.val === "string" && state.val.indexOf(":") !== -1) {
-                entity2.attributes.remaining = state.val;
-              } else {
-                state.val = parseInt(state.val, 10);
-                const hours = Math.floor(state.val / 3600);
-                const minutes = Math.floor(state.val % 3600 / 60);
-                const seconds = state.val % 60;
-                entity2.attributes.remaining = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-              }
-            }
-          }
-        ];
+        return converterTimer.processManualEntity(id, obj, entity, this._objectData.objects, custom);
       }
       entity.addID2entity(id);
       return [entity];
