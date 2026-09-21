@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const yaml = require('js-yaml');
+import { parseThemes } from '../themesYaml';
 
 type SendUpdateFn = (type: string) => void;
 
@@ -54,15 +53,10 @@ class ThemesModule {
      */
     async init(): Promise<void> {
         try {
-            this._themes = yaml.safeLoad(this.adapter.config.themes || '') || {};
-        } catch (depError: unknown) {
-            const message = depError instanceof Error ? depError.message : String(depError);
-            if (message.includes('yaml.safeLoad') && message.includes('removed')) {
-                this._themes = yaml.load(this.adapter.config.themes || '') || {};
-            } else {
-                this.adapter.log.error(`Cannot parse themes: ${message}`);
-                this._themes = {};
-            }
+            this._themes = parseThemes(this.adapter.config.themes);
+        } catch (error: unknown) {
+            this.adapter.log.error(`Cannot parse themes: ${error instanceof Error ? error.message : String(error)}`);
+            this._themes = {};
         }
 
         const states: Record<string, string> = { default: 'default' };
