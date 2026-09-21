@@ -14,23 +14,6 @@ class PersonModule {
     this.usersCache = {};
   }
   /**
-   * Process a request to the person api.
-   *
-   * @param req - request object with url
-   * @param req.url - the request URL path
-   * @param req._user - authenticated user name
-   * @param res - response object to send response
-   * @param res.json - function to send JSON response
-   */
-  processRequest(req, res) {
-    if (req.url === "/api/person/list") {
-      res.json(this.usersCache);
-    } else {
-      this.adapter.log.warn(`Unknown request ${req.url} for person api.`);
-      res.json({});
-    }
-  }
-  /**
    * Handle WebSocket messages. The Settings -> People page calls `person/list` and waits for
    * `{ storage, config }`; an unanswered call leaves the page stuck on a loading spinner. Our
    * persons mirror the ioBroker users, so we report them as `storage` persons and have no

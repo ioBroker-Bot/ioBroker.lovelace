@@ -19,9 +19,11 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var cards_exports = {};
 __export(cards_exports, {
   cacheBuster: () => cacheBuster,
-  detectCardVersion: () => detectCardVersion
+  detectCardVersion: () => detectCardVersion,
+  staticCardUrl: () => staticCardUrl
 });
 module.exports = __toCommonJS(cards_exports);
+var import_node_fs = require("node:fs");
 const SEMVER = "(\\d+\\.\\d+(?:\\.\\d+)?(?:[-+][0-9A-Za-z.]+)?)";
 function resolveVariable(content, name) {
   const match = new RegExp(`(?:^|[^\\w$.])${name}\\s*=\\s*["'\`]v?${SEMVER}["'\`]`).exec(content);
@@ -51,9 +53,14 @@ function cacheBuster(file) {
   const version = file.modifiedAt || ((_a = file.stats) == null ? void 0 : _a.mtimeMs) || ((_b = file.stats) == null ? void 0 : _b.size);
   return version ? `?v=${version}` : "";
 }
+const ADAPTER_VERSION = JSON.parse((0, import_node_fs.readFileSync)(`${__dirname}/../../package.json`, "utf8")).version;
+function staticCardUrl(file) {
+  return `/cards/_static_${file}?v=${ADAPTER_VERSION}`;
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   cacheBuster,
-  detectCardVersion
+  detectCardVersion,
+  staticCardUrl
 });
 //# sourceMappingURL=cards.js.map

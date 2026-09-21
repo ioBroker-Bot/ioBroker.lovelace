@@ -18,59 +18,9 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var genericConverter_exports = {};
 __export(genericConverter_exports, {
-  iobState2EntityState: () => iobState2EntityState,
-  numericDeviceClasses: () => numericDeviceClasses
+  iobState2EntityState: () => iobState2EntityState
 });
 module.exports = __toCommonJS(genericConverter_exports);
-const numericDeviceClasses = [
-  "voltage",
-  "sulphur_dioxide",
-  "carbon_dioxide",
-  "current",
-  "volume_storage",
-  "volume",
-  "ozone",
-  "speed",
-  "atmospheric_pressure",
-  "carbon_monoxide",
-  "aqi",
-  "pm25",
-  "nitrogen_monoxide",
-  "power_factor",
-  "pm1",
-  "precipitation",
-  "volatile_organic_compounds",
-  "humidity",
-  "pressure",
-  "battery",
-  "irradiance",
-  "wind_speed",
-  "pm10",
-  "ph",
-  "reactive_power",
-  "temperature",
-  "precipitation_intensity",
-  "sound_pressure",
-  "data_rate",
-  "frequency",
-  "volatile_organic_compounds_parts",
-  "energy",
-  "apparent_power",
-  "weight",
-  "duration",
-  "gas",
-  "water",
-  "power",
-  "monetary",
-  "signal_strength",
-  "data_size",
-  "energy_storage",
-  "nitrogen_dioxide",
-  "nitrous_oxide",
-  "illuminance",
-  "moisture",
-  "distance"
-];
 function iobState2EntityState(entity, val, attribute) {
   var _a, _b, _c;
   let type = entity.context.type || "";
@@ -108,7 +58,6 @@ function iobState2EntityState(entity, val, attribute) {
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  iobState2EntityState,
-  numericDeviceClasses
+  iobState2EntityState
 });
 //# sourceMappingURL=genericConverter.js.map
