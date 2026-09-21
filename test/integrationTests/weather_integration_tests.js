@@ -285,7 +285,7 @@ exports.runTests = function (suite) {
             await testUpdates(harness, states, entity);
         });
 
-        jsonFiles.push('../testData/weather_daswetter.json');
+        jsonFiles.push('../testData/weather_daswetter_v3.json');
         idsWithEnums.push('daswetter.0.NextDays.Location_1');
         it('should create weather entity for daswetter with right data on right days and update correctly', async () => {
             const deviceId = 'daswetter.0.NextDays.Location_1';
@@ -477,6 +477,78 @@ exports.runTests = function (suite) {
                     expect(date.getDate()).to.equal(controlDate.getDate());
                 },
             );
+        });
+
+        jsonFiles.push('../testData/weather_daswetter.json');
+        idsWithEnums.push('daswetter.0.location_1.ForecastDaily');
+        it('should create weather entity for daswetter 4 with loadable icons and a forecast subscription', async () => {
+            const deviceId = 'daswetter.0.location_1.ForecastDaily';
+            const dump = require('../testData/weather_daswetter.json');
+            // The dump carries the values daswetter wrote; states are not created from objects.
+            await Promise.all(
+                Object.entries(dump)
+                    .filter(([, obj]) => obj.type === 'state' && obj.val !== undefined && obj.val !== null)
+                    .map(([id, obj]) => harness.states.setStateAsync(id, obj.val, true)),
+            );
+            await tools.delay(1000);
+            const entities = await tools.sendToAsync(harness, 'lovelace.0', 'browse');
+            const entity = entities.find(e => e.context.deviceId === deviceId && e.entity_id.startsWith('weather.'));
+            expect(entity).to.be.ok;
+
+            // daswetter 4 writes /daswetter.admin/icons/..., which only loads through our /adapter/ route.
+            expect(entity.state).to.equal('/adapter/daswetter/icons/weather/gallery1/png/64x64/03.png');
+            expect(entity.attributes.pressure).to.equal(1030);
+            expect(entity.attributes.forecast).to.have.lengthOf(5);
+            expect(entity.attributes.forecast[0]).to.include({
+                condition: '/adapter/daswetter/icons/weather/gallery1/png/64x64/03.png',
+                temperature: 19.26,
+                templow: 10.2,
+                datetime: '2026-09-20T22:00:00.000Z',
+            });
+            // a daily forecast: the card editor offers "daily" and the card asks for it
+            expect(entity.attributes.supported_features).to.equal(1);
+
+            // A card set up in the editor has a forecast_type and only takes the forecast from
+            // weather/subscribe_forecast, never from the attribute.
+            const WebSocket = require('ws');
+            const client = new WebSocket(`ws://localhost:${tools.lovelacePort}`);
+            const events = [];
+            await new Promise((resolve, reject) => {
+                client.on('error', reject);
+                client.on('open', () => {
+                    client.send(JSON.stringify({ id: 1, type: 'auth', access_token: 'no_token' }));
+                    client.send(
+                        JSON.stringify({
+                            id: 2,
+                            type: 'weather/subscribe_forecast',
+                            entity_id: entity.entity_id,
+                            forecast_type: 'daily',
+                        }),
+                    );
+                });
+                client.on('message', data => {
+                    const message = JSON.parse(data.toString('utf8'));
+                    if (message.id === 2 && message.type === 'event') {
+                        events.push(message.event);
+                        resolve();
+                    }
+                });
+            });
+            try {
+                expect(events[0].type).to.equal('daily');
+                expect(events[0].forecast).to.have.lengthOf(5);
+                expect(events[0].forecast[1].temperature).to.equal(17.94);
+
+                // a changed forecast is pushed to the subscription
+                await harness.states.setStateAsync(`${deviceId}.Day_2.Temperature_Max`, 22.5, true);
+                for (let i = 0; i < 30 && events.length < 2; i++) {
+                    await tools.delay(100);
+                }
+                expect(events).to.have.lengthOf(2);
+                expect(events[1].forecast[1].temperature).to.equal(22.5);
+            } finally {
+                client.close();
+            }
         });
 
         jsonFiles.push('../testData/weather_weatherunderground.json');

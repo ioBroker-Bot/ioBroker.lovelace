@@ -1,6 +1,35 @@
 import { BaseEntity } from './baseEntity';
 import { setJsonAttribute } from './utils';
 import type { ConverterParameters } from '../converters/converter';
+import type { EntityAttribute } from './baseEntity';
+import { FORECAST_FEATURES, updateForecastFeature } from '../modules/weatherForecast';
+
+/**
+ * Make an icon url of an ioBroker adapter loadable through our own `/adapter/<name>/` route.
+ *
+ * Adapters point at their icons below their admin folder, served by the admin / web adapter. Old
+ * versions of daswetter wrote `/adapter/daswetter/icons/...`, which the Lovelace server already
+ * maps to the files of `daswetter.admin`; daswetter 4 writes `/daswetter.admin/icons/...`, a path
+ * our server does not know, so the icons stayed empty. Only the `/adapter/` form also gets the
+ * access token appended by the frontend.
+ *
+ * @param value - the value of the icon state
+ * @returns the value, with an admin folder path rewritten to `/adapter/<name>/`
+ */
+export function toAdapterIconUrl(value: ioBroker.StateValue | undefined): ioBroker.StateValue | undefined {
+    return typeof value === 'string' ? value.replace(/^\/([a-zA-Z0-9_-]+)\.admin\//, '/adapter/$1/') : value;
+}
+
+/**
+ * Attribute parser for the forecast conditions: the icon url, made loadable.
+ *
+ * @param entity - the weather entity
+ * @param attr - the attribute description
+ * @param state - the new state of the icon
+ */
+function parseIconAttribute(entity: BaseEntity, attr: EntityAttribute, state: ioBroker.State): void {
+    setJsonAttribute(entity.attributes, attr.attribute, toAdapterIconUrl(state?.val) ?? null);
+}
 
 /**
  * WeatherEntity — single class for the Home Assistant `weather` domain.
@@ -21,6 +50,9 @@ export class WeatherEntity extends BaseEntity {
         let state = controls.states.find(s => s.id && s.name === 'ICON');
         if (state?.id) {
             this.context.STATE.getId = state.id;
+            this.context.STATE.getParser = (entity, _attributeName, iobState): void => {
+                entity.state = String(toAdapterIconUrl(iobState?.val) ?? 'unknown');
+            };
             this.addID2entity(state.id);
         }
 
@@ -110,7 +142,11 @@ export class WeatherEntity extends BaseEntity {
                 hassCounter++;
                 somethingFound = true;
                 dayShiftId = state.id;
-                this.context.ATTRIBUTES.push({ attribute: `forecast.${hassCounter}.condition`, getId: state.id });
+                this.context.ATTRIBUTES.push({
+                    attribute: `forecast.${hassCounter}.condition`,
+                    getId: state.id,
+                    getParser: parseIconAttribute,
+                });
                 this.addID2entity(state.id);
             }
 
@@ -129,7 +165,14 @@ export class WeatherEntity extends BaseEntity {
             if (somethingFound) {
                 state = controls.states.find(s => s.id && s.name === `DATE${postFix}`);
                 if (state?.id) {
-                    this.context.ATTRIBUTES.push({ attribute: `forecast.${hassCounter}.datetime`, getId: state.id });
+                    this.context.ATTRIBUTES.push({
+                        attribute: `forecast.${hassCounter}.datetime`,
+                        getId: state.id,
+                        getParser: (ent, attr, iobState): void => {
+                            setJsonAttribute(ent.attributes, attr.attribute, iobState?.val ?? null);
+                            updateForecastFeature(ent);
+                        },
+                    });
                     this.addID2entity(state.id);
                 } else if (dayShiftId) {
                     const capturedShift = day;
@@ -147,12 +190,19 @@ export class WeatherEntity extends BaseEntity {
                                 date.setDate(date.getDate() + attr.dayShift);
                             }
                             setJsonAttribute(ent.attributes, attr.attribute, date.toISOString());
+                            updateForecastFeature(ent);
                         },
                     });
                 }
             } else if (hassCounter >= 0) {
                 break;
             }
+        }
+
+        // Until the dates are known a forecast counts as a daily one, the common case. Without a
+        // forecast feature the frontend offers no forecast at all.
+        if (hassCounter >= 0) {
+            this.attributes.supported_features = FORECAST_FEATURES.daily;
         }
     }
 }

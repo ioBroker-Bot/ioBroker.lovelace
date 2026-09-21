@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Types } from '@iobroker/type-detector';
 import type { PatternControl } from '@iobroker/type-detector';
-import { WeatherEntity } from '../entities/weatherEntity';
+import { toAdapterIconUrl, WeatherEntity } from '../entities/weatherEntity';
 import type { ConverterParameters } from './converter';
 
 const DEVICE_ID = 'test.weather_device';
@@ -180,5 +180,38 @@ describe('converters/weather', function () {
             const entity = new WeatherEntity(params);
             expect(entity.entity_id).to.match(/^weather\./);
         });
+    });
+});
+
+describe('converters/weather icon urls', function () {
+    it('rewrites the admin folder path of daswetter 4 to our /adapter/ route', function () {
+        expect(toAdapterIconUrl('/daswetter.admin/icons/weather/gallery1/png/64x64/03.png')).to.equal(
+            '/adapter/daswetter/icons/weather/gallery1/png/64x64/03.png',
+        );
+    });
+
+    it('leaves the urls alone that already load', function () {
+        for (const url of [
+            '/adapter/daswetter/icons/tiempo-weather/galeria1/3.png',
+            'https://developer.accuweather.com/sites/default/files/01-s.png',
+            'data:image/png;base64,AAAA',
+        ]) {
+            expect(toAdapterIconUrl(url)).to.equal(url);
+        }
+        expect(toAdapterIconUrl(null)).to.equal(null);
+    });
+
+    it('uses the loadable url for the state and the forecast condition', function () {
+        const entity = new WeatherEntity(makeParameters([{ id: ICON_ID, name: 'ICON' }]));
+        const url = '/daswetter.admin/icons/weather/gallery1/png/64x64/03.png';
+
+        entity.context.STATE.getParser!(entity, 'state', { val: url } as ioBroker.State);
+        expect(entity.state).to.equal('/adapter/daswetter/icons/weather/gallery1/png/64x64/03.png');
+
+        const condition = entity.context.ATTRIBUTES.find(a => a.attribute === 'forecast.0.condition')!;
+        condition.getParser!(entity, condition, { val: url } as ioBroker.State);
+        expect((entity.attributes.forecast as { condition: string }[])[0].condition).to.equal(
+            '/adapter/daswetter/icons/weather/gallery1/png/64x64/03.png',
+        );
     });
 });

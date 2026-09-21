@@ -18,11 +18,20 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var weatherEntity_exports = {};
 __export(weatherEntity_exports, {
-  WeatherEntity: () => WeatherEntity
+  WeatherEntity: () => WeatherEntity,
+  toAdapterIconUrl: () => toAdapterIconUrl
 });
 module.exports = __toCommonJS(weatherEntity_exports);
 var import_baseEntity = require("./baseEntity");
 var import_utils = require("./utils");
+var import_weatherForecast = require("../modules/weatherForecast");
+function toAdapterIconUrl(value) {
+  return typeof value === "string" ? value.replace(/^\/([a-zA-Z0-9_-]+)\.admin\//, "/adapter/$1/") : value;
+}
+function parseIconAttribute(entity, attr, state) {
+  var _a;
+  (0, import_utils.setJsonAttribute)(entity.attributes, attr.attribute, (_a = toAdapterIconUrl(state == null ? void 0 : state.val)) != null ? _a : null);
+}
 class WeatherEntity extends import_baseEntity.BaseEntity {
   /** @param params - converter parameters */
   constructor(params) {
@@ -33,6 +42,10 @@ class WeatherEntity extends import_baseEntity.BaseEntity {
     let state = controls.states.find((s) => s.id && s.name === "ICON");
     if (state == null ? void 0 : state.id) {
       this.context.STATE.getId = state.id;
+      this.context.STATE.getParser = (entity, _attributeName, iobState) => {
+        var _a;
+        entity.state = String((_a = toAdapterIconUrl(iobState == null ? void 0 : iobState.val)) != null ? _a : "unknown");
+      };
       this.addID2entity(state.id);
     }
     state = controls.states.find((s) => s.id && s.name === "TEMP");
@@ -110,7 +123,11 @@ class WeatherEntity extends import_baseEntity.BaseEntity {
         hassCounter++;
         somethingFound = true;
         dayShiftId = state.id;
-        this.context.ATTRIBUTES.push({ attribute: `forecast.${hassCounter}.condition`, getId: state.id });
+        this.context.ATTRIBUTES.push({
+          attribute: `forecast.${hassCounter}.condition`,
+          getId: state.id,
+          getParser: parseIconAttribute
+        });
         this.addID2entity(state.id);
       }
       tryAdd(`TEMP_MAX${postFix}`, `forecast.${hassCounter}.temperature`);
@@ -124,7 +141,15 @@ class WeatherEntity extends import_baseEntity.BaseEntity {
       if (somethingFound) {
         state = controls.states.find((s) => s.id && s.name === `DATE${postFix}`);
         if (state == null ? void 0 : state.id) {
-          this.context.ATTRIBUTES.push({ attribute: `forecast.${hassCounter}.datetime`, getId: state.id });
+          this.context.ATTRIBUTES.push({
+            attribute: `forecast.${hassCounter}.datetime`,
+            getId: state.id,
+            getParser: (ent, attr, iobState) => {
+              var _a;
+              (0, import_utils.setJsonAttribute)(ent.attributes, attr.attribute, (_a = iobState == null ? void 0 : iobState.val) != null ? _a : null);
+              (0, import_weatherForecast.updateForecastFeature)(ent);
+            }
+          });
           this.addID2entity(state.id);
         } else if (dayShiftId) {
           const capturedShift = day;
@@ -142,6 +167,7 @@ class WeatherEntity extends import_baseEntity.BaseEntity {
                 date.setDate(date.getDate() + attr.dayShift);
               }
               (0, import_utils.setJsonAttribute)(ent.attributes, attr.attribute, date.toISOString());
+              (0, import_weatherForecast.updateForecastFeature)(ent);
             }
           });
         }
@@ -149,10 +175,14 @@ class WeatherEntity extends import_baseEntity.BaseEntity {
         break;
       }
     }
+    if (hassCounter >= 0) {
+      this.attributes.supported_features = import_weatherForecast.FORECAST_FEATURES.daily;
+    }
   }
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  WeatherEntity
+  WeatherEntity,
+  toAdapterIconUrl
 });
 //# sourceMappingURL=weatherEntity.js.map

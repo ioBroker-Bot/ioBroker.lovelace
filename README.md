@@ -90,6 +90,8 @@ After that checkout modified version in `./build` folder. Then.
 * (Garfonso/Claude) The buttons of a timer entity work now (start, cancel, finish, change).
 * (Garfonso/Claude) Energy costs of a meter counting Wh are no longer a thousand times too high.
 * (Garfonso/Claude) Themes work again with js-yaml 5, including themes that build on another one (`<<: *base`).
+* (Garfonso/Claude) Weather icons of daswetter 4 are shown again.
+* (Garfonso/Claude) Weather cards set up in the editor show the forecast (weather/subscribe_forecast).
 * (Garfonso/Claude) Shipped cards (browser_mod) get the adapter version in their url, so an update is loaded instead of the cached copy.
 * (Garfonso/Claude) Service calls that fail now always answer, instead of leaving the frontend waiting.
 * (Garfonso/Claude) homeassistant.update_entity rereads the states of the entity instead of failing.

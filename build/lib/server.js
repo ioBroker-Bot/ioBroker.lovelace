@@ -78,6 +78,7 @@ var import_mediaSource = __toESM(require("./modules/mediaSource"));
 var import_search = __toESM(require("./modules/search"));
 var import_image = __toESM(require("./modules/image"));
 var import_calendar = __toESM(require("./modules/calendar"));
+var import_weatherForecast = __toESM(require("./modules/weatherForecast"));
 var import_storage = require("./modules/storage");
 var import_safePath = require("./safePath");
 const WebSocket = require("ws");
@@ -307,6 +308,10 @@ class WebServer {
         sendResponse: (ws, id, result) => this._sendResponse(ws, id, result),
         entityData,
         getUserIDFromName: (name) => this._modules.person.getUserIDFromName(name)
+      }),
+      weatherForecast: new import_weatherForecast.default({
+        sendResponse: (ws, id, result) => this._sendResponse(ws, id, result),
+        entityData
       }),
       image: new import_image.default({
         adapter: this.adapter,
@@ -2699,6 +2704,7 @@ ${hideScript.join("\n")}
           });
           this._modules.template.removeTemplate(ws, message.subscription);
           this._modules.calendar.removeSubscription(ws, message.subscription);
+          this._modules.weatherForecast.removeSubscription(ws, message.subscription);
         }
         this._sendResponse(ws, message.id);
       } else if (message.type === "subscribe_entities") {
