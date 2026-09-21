@@ -83,7 +83,7 @@ After that checkout modified version in `./build` folder. Then.
 	### **WORK IN PROGRESS**
     ### for next frontend update, update of auto entities card will be necessary!
 -->
-### **WORK IN PROGRESS**
+### 7.1.0 (2026-09-21)
 * (Garfonso/Claude) Removed endpoints and services that neither the frontend nor Home Assistant offer any more (camera_thumbnail, conversation/agent/info, /api/person, sensor/numeric_device_classes, image/list, fan.set_speed).
 * (Garfonso/Claude) The action picker only offers services the adapter can really execute.
 * (Garfonso/Claude) Removed the old shopping list api, the shopping list has been a todo list for a long time.
@@ -143,23 +143,6 @@ After that checkout modified version in `./build` folder. Then.
 * (Garfonso/Claude) Custom dialog: device classes are sorted with clearer labels (id + unit), missing classes were added, device/state class can be cleared, and `has_time`/`has_date` no longer cause spurious "unsaved changes".
 * (Garfonso/Claude) Auto-detected temperature/humidity/illuminance sensors now report `state_class: measurement` (for HA statistics).
 * (Garfonso/Claude) Custom dialog: device class is suggested from the state's unit, and state class from the unit, when unambiguous.
-
-### 6.1.0 (2026-06-23)
-* (Garfonso/Claude) Remove HA-App Banner on iPhone (#418).
-* (Garfonso/Claude) New manual entity types `device_tracker` and `person` to show presence/GPS on the map, with object pickers for the presence and location states.
-* (Garfonso/Claude) Manual `cover` entities can now be configured with object pickers (e.g. an automatic window), reusing the full cover logic.
-* (Garfonso/Claude) Reorganized the user documentation into matching English and German pages under `docs/en` / `docs/de` (entities, cards & UI, features), linked from the README; development/build notes stay in the README.
-* (Garfonso/Claude) Fixed history/logbook stopping to load after a while (a hung history request could permanently block all following ones).
-* (Garfonso/Claude) Manual `lock` and `media_player` entities can now be configured with object pickers for their states.
-* (Garfonso/Claude) Vacuum cleaners are now supported (auto-detection + manual object pickers): start/stop/pause, fan speed and battery.
-* (Garfonso/Claude) New manual entity types `humidifier` and `water_heater`, configurable with object pickers.
-* (Garfonso/Claude) Manual `light` and `climate` (thermostat) entities can now be configured with object pickers (brightness/colour/temperature, target/mode/…), reusing the full converters.
-* (Garfonso/Claude) Fixed room and function being swapped in the auto-generated name of advanced lights.
-* (Garfonso/Claude) Manual `device_tracker`/`person` entities can get a picture (entity_picture) from a fixed URL or a state, plus a battery level and (device_tracker) a source type.
-* (Garfonso/Claude) More manual-entity options: cover tilt open/close/stop, light white/RGBW/CIE colour states, sensor state class, humidifier device class.
-* (Garfonso/Claude) Manual `fan` entities now have object pickers (on/off, speed/preset, oscillation, direction).
-* (Garfonso/Claude) Vacuum can show its map (URL or base64 state) as the entity picture.
-* (Garfonso/Claude) Removed `plant`, `weblink` and `history_graph` from the manual entity types (no longer Home Assistant entity domains).
 
 [Older changelogs can be found there](CHANGELOG_OLD.md)
 
