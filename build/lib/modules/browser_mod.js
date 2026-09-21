@@ -1,8 +1,10 @@
 "use strict";
+var import_themesYaml = require("../themesYaml");
 const instancesPath = "instances.";
-const yaml = require("js-yaml");
-const BROWSER_MOD_VERSION = "2.13.5";
+const BROWSER_MOD_VERSION = "3.2.3";
 class BrowserModModule {
+  /** Version reported to the browser_mod frontend, see BROWSER_MOD_VERSION. */
+  static VERSION = BROWSER_MOD_VERSION;
   adapter;
   objects;
   clients;
@@ -320,7 +322,7 @@ class BrowserModModule {
    * @returns a browser id that is safe as an ioBroker id segment
    */
   _sanitizeBrowserId(browserId) {
-    const forbidden = this.adapter.FORBIDDEN_CHARS || /[\][*,;'"`<>\\?\s -]/g;
+    const forbidden = this.adapter.FORBIDDEN_CHARS || /[\][*,;'"`<>\\?\s\x00-\x1f]/g;
     return browserId.replace(forbidden, "_").replace(/\./g, "_");
   }
   /**
@@ -539,8 +541,7 @@ class BrowserModModule {
   _getThemeStates() {
     const states = { default: "default", auto: "auto" };
     try {
-      const themes = yaml.load(this.adapter.config.themes || "") || {};
-      for (const themeName of Object.keys(themes)) {
+      for (const themeName of Object.keys((0, import_themesYaml.parseThemes)(this.adapter.config.themes))) {
         states[themeName] = themeName;
       }
     } catch (e) {
