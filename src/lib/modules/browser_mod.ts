@@ -1,3 +1,5 @@
+import { parseThemes } from '../themesYaml';
+
 const instancesPath = 'instances.';
 
 interface BrowserSettings {
@@ -54,22 +56,22 @@ type AdapterWithConfig = ioBroker.Adapter & {
     };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const yaml = require('js-yaml');
-
 /**
  * Version reported to the browser_mod frontend. Must match the version bundled in
  * hass_frontend/static_cards/browser_mod.js (its internal `Mt` constant). If they differ,
  * the frontend shows a "Browser Mod version mismatch" reload prompt. Bump this whenever the
  * shipped browser_mod frontend is updated.
  */
-const BROWSER_MOD_VERSION = '2.13.5';
+const BROWSER_MOD_VERSION = '3.2.3';
 
 /**
  * Support for browser_mod integration.
  * This is now installed with lovelace by default to control the frontends from ioBroker states.
  */
 class BrowserModModule {
+    /** Version reported to the browser_mod frontend, see BROWSER_MOD_VERSION. */
+    static readonly VERSION = BROWSER_MOD_VERSION;
+
     private adapter: AdapterWithConfig;
     private objects: Record<string, unknown>;
     private clients: Record<string, ClientEntry>;
@@ -424,7 +426,7 @@ class BrowserModModule {
      */
     _sanitizeBrowserId(browserId: string): string {
         // eslint-disable-next-line no-control-regex
-        const forbidden = this.adapter.FORBIDDEN_CHARS || /[\][*,;'"`<>\\?\s -]/g;
+        const forbidden = this.adapter.FORBIDDEN_CHARS || /[\][*,;'"`<>\\?\s\x00-\x1f]/g;
         return browserId.replace(forbidden, '_').replace(/\./g, '_');
     }
 
@@ -663,8 +665,7 @@ class BrowserModModule {
     private _getThemeStates(): Record<string, string> {
         const states: Record<string, string> = { default: 'default', auto: 'auto' };
         try {
-            const themes = (yaml.load(this.adapter.config.themes || '') as Record<string, unknown>) || {};
-            for (const themeName of Object.keys(themes)) {
+            for (const themeName of Object.keys(parseThemes(this.adapter.config.themes))) {
                 states[themeName] = themeName;
             }
         } catch (e) {
