@@ -423,7 +423,7 @@ class BrowserModModule {
      */
     _sanitizeBrowserId(browserId: string): string {
         // eslint-disable-next-line no-control-regex
-        const forbidden = this.adapter.FORBIDDEN_CHARS || /[\][*,;'"`<>\\?\s -]/g;
+        const forbidden = this.adapter.FORBIDDEN_CHARS || /[\][*,;'"`<>\\?\s\x00-\x1f]/g;
         return browserId.replace(forbidden, '_').replace(/\./g, '_');
     }
 
