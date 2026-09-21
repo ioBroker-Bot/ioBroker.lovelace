@@ -309,16 +309,18 @@ describe('modules/statisticsRecorder energy costs', function () {
     function makeCostModule(
         cost: { sourceStatisticId: string; price?: number; priceEntityId?: string },
         series: Record<string, { ts: number; val: number | null }[]>,
+        energyUnit = 'kWh',
+        priceUnit = 'EUR/kWh',
     ): { mod: any; responses: any[] } {
         const responses: any[] = [];
         const energy = {
             entity_id: 'sensor.energy',
-            attributes: { unit_of_measurement: 'kWh', device_class: 'energy' },
+            attributes: { unit_of_measurement: energyUnit, device_class: 'energy' },
             context: { STATE: { getId: 'src.0.energy' } },
         };
         const price = {
             entity_id: 'sensor.price',
-            attributes: { unit_of_measurement: 'EUR/kWh' },
+            attributes: { unit_of_measurement: priceUnit },
             context: { STATE: { getId: 'src.0.price' } },
         };
         const mod = new StatisticsRecorder({
@@ -394,6 +396,44 @@ describe('modules/statisticsRecorder energy costs', function () {
         await ask(mod, ['change']);
 
         expect(responses[0]['sensor.energy_cost'].map((b: any) => b.change)).to.deep.equal([0.4, 0.4]);
+    });
+
+    it('converts a meter counting Wh into kWh before applying the fixed price', async function () {
+        // The fixed price is per kWh. Without the conversion 1000 Wh would cost 1000 * 0.3.
+        const { mod, responses } = makeCostModule(
+            { sourceStatisticId: 'sensor.energy', price: 0.3 },
+            {
+                'src.0.energy': [
+                    { ts: T0 - STEP, val: 10000 },
+                    { ts: T0, val: 11000 },
+                ],
+            },
+            'Wh',
+        );
+
+        await ask(mod, ['change']);
+
+        expect(responses[0]['sensor.energy_cost'].map((b: any) => b.change)).to.deep.equal([0.3]);
+    });
+
+    it('takes the unit of a price entity from behind its slash', async function () {
+        // EUR/Wh on a Wh meter: nothing to convert.
+        const { mod, responses } = makeCostModule(
+            { sourceStatisticId: 'sensor.energy', priceEntityId: 'sensor.price' },
+            {
+                'src.0.energy': [
+                    { ts: T0 - STEP, val: 10000 },
+                    { ts: T0, val: 11000 },
+                ],
+                'src.0.price': [{ ts: T0, val: 0.0003 }],
+            },
+            'Wh',
+            'EUR/Wh',
+        );
+
+        await ask(mod, ['change']);
+
+        expect(responses[0]['sensor.energy_cost'].map((b: any) => Number(b.change.toFixed(6)))).to.deep.equal([0.3]);
     });
 
     it('reports the cost statistic as money in the metadata', async function () {

@@ -138,6 +138,24 @@ class StatisticsRecorder {
    * @param message - the message from the frontend
    */
   /**
+   * The unit a price refers to.
+   *
+   * @param unitClass - unit class of the meter (energy or volume)
+   * @param priceEntityId - entity holding the price, if the price is not a fixed one
+   * @returns the unit, e.g. "kWh"; undefined when the meter is neither energy nor volume
+   */
+  _priceUnit(unitClass, priceEntityId) {
+    var _a, _b, _c;
+    const fallback = unitClass === "energy" ? "kWh" : unitClass === "volume" ? "m\xB3" : void 0;
+    if (!unitClass || !priceEntityId) {
+      return fallback;
+    }
+    const priceUnit = String(
+      (_b = (_a = this.dataSingleton.entityId2Entity[priceEntityId]) == null ? void 0 : _a.attributes.unit_of_measurement) != null ? _b : ""
+    ).split("/").pop();
+    return priceUnit && ((_c = UNIT_FACTORS[unitClass]) == null ? void 0 : _c[priceUnit]) ? priceUnit : fallback;
+  }
+  /**
    * Build the statistics of a cost that Home Assistant would record with a cost sensor: the energy
    * consumed in each bucket, multiplied by the price of that bucket.
    *
@@ -150,7 +168,7 @@ class StatisticsRecorder {
    * @returns the buckets, empty when the energy meter has no history
    */
   async _costStatistics(cost, start, end, step, user, types) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const source = this.dataSingleton.entityId2Entity[cost.sourceStatisticId];
     const sourceId = (source == null ? void 0 : source.context.STATE.getId) || (source == null ? void 0 : source.context.STATE.setId) || "";
     if (!sourceId) {
@@ -173,6 +191,9 @@ class StatisticsRecorder {
         }
       }
     }
+    const unitClass = unitClassForDeviceClass(source.attributes.device_class);
+    const priceUnit = this._priceUnit(unitClass, cost.priceEntityId);
+    const factor = (_a = conversionFactor(unitClass, source.attributes.unit_of_measurement, priceUnit)) != null ? _a : 1;
     const series = await this.getHistory(sourceId, start - step, end, step, "max", user);
     const wantState = types == null ? void 0 : types.includes("state");
     const wantSum = types == null ? void 0 : types.includes("sum");
@@ -187,13 +208,13 @@ class StatisticsRecorder {
         continue;
       }
       if (series[i].ts >= start && series[i].ts <= end) {
-        const price = cost.priceEntityId ? (_a = prices.get(series[i].ts)) != null ? _a : lastPrice : cost.price;
+        const price = cost.priceEntityId ? (_b = prices.get(series[i].ts)) != null ? _b : lastPrice : cost.price;
         if (price !== void 0) {
           lastPrice = price;
         }
-        const bucket = { start: series[i].ts, end: Math.min((_c = (_b = series[i + 1]) == null ? void 0 : _b.ts) != null ? _c : end, end) };
+        const bucket = { start: series[i].ts, end: Math.min((_d = (_c = series[i + 1]) == null ? void 0 : _c.ts) != null ? _d : end, end) };
         const consumed = previous !== void 0 && value >= previous ? value - previous : null;
-        const change = consumed !== null && price !== void 0 ? consumed * price : null;
+        const change = consumed !== null && price !== void 0 ? consumed * factor * price : null;
         if (change !== null) {
           total += change;
         }
