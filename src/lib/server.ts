@@ -16,7 +16,7 @@ import * as converterGeoLocation from './converters/geo_location';
 import * as converterDeviceTracker from './converters/deviceTracker';
 import { buildManualViaConverter, syntheticControlStates } from './converters/syntheticControl';
 import { applyCustomAttributes, collectCustomAttributes } from './converters/manualStates';
-import { cacheBuster, detectCardVersion } from './cards';
+import { cacheBuster, detectCardVersion, staticCardUrl } from './cards';
 import * as converterDatetime from './converters/input_datetime';
 import * as converterAlarmCP from './converters/alarm_control_panel';
 import * as converterInputSelect from './converters/input_select';
@@ -1662,7 +1662,7 @@ class WebServer {
                 this.log.debug(`Add static card: ${file} as ${'js'}`);
                 this._ressourceConfig.push({
                     type: 'module',
-                    url: `/cards/_static_${file}`,
+                    url: staticCardUrl(file),
                 });
             }
 
@@ -1970,7 +1970,7 @@ class WebServer {
                 // reload, because Lovelace resources are only loaded on dashboard panels.
                 // The module self-inits behind a `window.browser_mod` guard, so the extra import
                 // on dashboard pages is a harmless no-op (cached by URL).
-                nLines.push(`<script type="module">import('/cards/_static_browser_mod.js');</script>`);
+                nLines.push(`<script type="module">import('${staticCardUrl('browser_mod.js')}');</script>`);
                 //deprecated.
                 //nLines.push('<script>\n' + fs.readFileSync(__dirname + '/../assets/index.js').toString('utf-8') + hideScript.join('\n') + '\n</script>');
             }

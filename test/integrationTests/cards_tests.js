@@ -156,6 +156,19 @@ exports.runTests = function (suite) {
             }
         });
 
+        it('offers the shipped cards with the adapter version and caches them for good', async () => {
+            // An adapter update replaces browser_mod.js without renaming it, so the url carries the
+            // adapter version - otherwise the browser would keep running the old copy.
+            const version = require('../../package.json').version;
+            const resources = await readResources();
+            const browserMod = resources.find(entry => entry.url.startsWith('/cards/_static_browser_mod.js'));
+            expect(browserMod.url).to.equal(`/cards/_static_browser_mod.js?v=${version}`);
+
+            const response = await fetch(`http://localhost:38091${browserMod.url}`);
+            expect(response.status).to.equal(200);
+            expect(response.headers.get('cache-control')).to.contain('immutable');
+        });
+
         it('does not cache the index and the service worker', async () => {
             const index = await fetch('http://localhost:38091/');
             expect(index.headers.get('cache-control')).to.equal('no-cache');

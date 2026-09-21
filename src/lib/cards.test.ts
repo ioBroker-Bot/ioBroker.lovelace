@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { cacheBuster, detectCardVersion } from './cards';
+import { readFileSync } from 'node:fs';
+import { cacheBuster, detectCardVersion, staticCardUrl } from './cards';
 
 describe('lib/cards detectCardVersion', function () {
     it('reads a version printed literally in the console banner', function () {
@@ -44,5 +45,13 @@ describe('lib/cards cacheBuster', function () {
 
     it('stays empty when nothing identifies the version', function () {
         expect(cacheBuster({})).to.equal('');
+    });
+});
+
+describe('lib/cards staticCardUrl', function () {
+    it('marks the cards we ship with the adapter version', function () {
+        const version = (JSON.parse(readFileSync(`${__dirname}/../../package.json`, 'utf8')) as { version: string })
+            .version;
+        expect(staticCardUrl('browser_mod.js')).to.equal(`/cards/_static_browser_mod.js?v=${version}`);
     });
 });
