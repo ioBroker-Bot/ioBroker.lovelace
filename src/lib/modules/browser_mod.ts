@@ -1,3 +1,5 @@
+import { parseThemes } from '../themesYaml';
+
 const instancesPath = 'instances.';
 
 interface BrowserSettings {
@@ -53,9 +55,6 @@ type AdapterWithConfig = ioBroker.Adapter & {
         themes?: string;
     };
 };
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const yaml = require('js-yaml');
 
 /**
  * Version reported to the browser_mod frontend. Must match the version bundled in
@@ -663,8 +662,7 @@ class BrowserModModule {
     private _getThemeStates(): Record<string, string> {
         const states: Record<string, string> = { default: 'default', auto: 'auto' };
         try {
-            const themes = (yaml.load(this.adapter.config.themes || '') as Record<string, unknown>) || {};
-            for (const themeName of Object.keys(themes)) {
+            for (const themeName of Object.keys(parseThemes(this.adapter.config.themes))) {
                 states[themeName] = themeName;
             }
         } catch (e) {
