@@ -10,6 +10,7 @@ import { computeSunState } from './sun';
 import { iobState2EntityState } from './converters/genericConverter';
 import { Converter } from './converters/converter';
 import * as converterSwitch from './converters/switch';
+import * as converterTimer from './converters/timer';
 import * as converterBinarySensors from './converters/binary_sensor';
 import * as converterSensors from './converters/sensor';
 import * as converterGeoLocation from './converters/geo_location';
@@ -875,46 +876,7 @@ class WebServer {
             } else if (entityType === 'switch') {
                 return converterSwitch.processManualEntity(id, obj, entity, this._objectData.objects, custom);
             } else if (entityType === 'timer') {
-                // - timer => STATE idle/paused/active, attributes: [remaining]
-                entity.context.STATE = { getId: null, setId: null, attribute: 'state' as const }; // will be simulated
-                entity.context.lastValue = null;
-                entity.attributes.remaining = 0;
-                entity.context.ATTRIBUTES = [
-                    {
-                        attribute: 'remaining',
-                        getId: id,
-                        setId: id,
-                        getParser: function (entity, attr, state) {
-                            state = state || { val: null };
-                            // - timer => STATE idle/paused/active, attributes: [remaining]
-                            // if 0 => timer is off
-                            if (!state.val) {
-                                entity.state = 'idle';
-                            } else if (entity.context.lastValue === null) {
-                                entity.state = 'active';
-                            } else if (entity.context.lastValue === state.val) {
-                                // pause
-                                entity.state = 'paused';
-                            } else {
-                                // active
-                                entity.state = 'active';
-                            }
-
-                            entity.context.lastValue = state.val;
-
-                            // seconds to D HH:MM:SS
-                            if (typeof state.val === 'string' && state.val.indexOf(':') !== -1) {
-                                entity.attributes.remaining = state.val;
-                            } else {
-                                state.val = parseInt(state.val as string, 10);
-                                const hours = Math.floor(state.val / 3600);
-                                const minutes = Math.floor((state.val % 3600) / 60);
-                                const seconds = state.val % 60;
-                                entity.attributes.remaining = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                            }
-                        },
-                    },
-                ];
+                return converterTimer.processManualEntity(id, obj, entity, this._objectData.objects, custom);
             }
 
             entity.addID2entity(id);
