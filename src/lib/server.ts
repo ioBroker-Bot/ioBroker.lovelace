@@ -1042,12 +1042,20 @@ class WebServer {
             this.adapter.setForeignState(id, data.service_data.message, false, { user }, () => {
                 this._sendResponse(ws, data.id);
             });
+        } else if (data.service === 'update_entity') {
+            // The refresh buttons of the frontend (more-info dialog, developer tools) call
+            // homeassistant.update_entity. We have no polling to trigger, so re-read the states of
+            // the entity from the ioBroker database and push the result to the frontend.
+            this.log.debug(`update_entity ${entity_id}`);
+            await this._getStatesForEntity(entity);
+            this.updateEntityInFrontend(entity);
+            this._sendResponse(ws, data.id);
         } else {
             this.log.warn(`Unknown service: ${data.service} (${JSON.stringify(data)})`);
             //{'id": 21, "type": "result", "success": false, "error": {"code": "not_found", "message": "Service not found."}}
             ws.send(
                 JSON.stringify({
-                    id,
+                    id: data.id,
                     type: 'result',
                     success: false,
                     error: { code: 'not_found', message: 'Service not found.' },
@@ -1098,6 +1106,15 @@ class WebServer {
         for (const id of ids) {
             if (!entityData.entityId2Entity[id]) {
                 this.log.warn(`Unknown entity: ${id} for service call ${JSON.stringify(data)}`);
+                // Answer anyway, an unanswered call leaves the frontend waiting forever.
+                ws.send(
+                    JSON.stringify({
+                        id: data.id,
+                        type: 'result',
+                        success: false,
+                        error: { code: 'not_found', message: `Entity ${id} not found.` },
+                    }),
+                );
             } else {
                 await this._processSingleCall(ws, data, id);
             }
