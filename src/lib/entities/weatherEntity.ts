@@ -2,6 +2,7 @@ import { BaseEntity } from './baseEntity';
 import { setJsonAttribute } from './utils';
 import type { ConverterParameters } from '../converters/converter';
 import type { EntityAttribute } from './baseEntity';
+import { FORECAST_FEATURES, updateForecastFeature } from '../modules/weatherForecast';
 
 /**
  * Make an icon url of an ioBroker adapter loadable through our own `/adapter/<name>/` route.
@@ -164,7 +165,14 @@ export class WeatherEntity extends BaseEntity {
             if (somethingFound) {
                 state = controls.states.find(s => s.id && s.name === `DATE${postFix}`);
                 if (state?.id) {
-                    this.context.ATTRIBUTES.push({ attribute: `forecast.${hassCounter}.datetime`, getId: state.id });
+                    this.context.ATTRIBUTES.push({
+                        attribute: `forecast.${hassCounter}.datetime`,
+                        getId: state.id,
+                        getParser: (ent, attr, iobState): void => {
+                            setJsonAttribute(ent.attributes, attr.attribute, iobState?.val ?? null);
+                            updateForecastFeature(ent);
+                        },
+                    });
                     this.addID2entity(state.id);
                 } else if (dayShiftId) {
                     const capturedShift = day;
@@ -182,12 +190,19 @@ export class WeatherEntity extends BaseEntity {
                                 date.setDate(date.getDate() + attr.dayShift);
                             }
                             setJsonAttribute(ent.attributes, attr.attribute, date.toISOString());
+                            updateForecastFeature(ent);
                         },
                     });
                 }
             } else if (hassCounter >= 0) {
                 break;
             }
+        }
+
+        // Until the dates are known a forecast counts as a daily one, the common case. Without a
+        // forecast feature the frontend offers no forecast at all.
+        if (hassCounter >= 0) {
+            this.attributes.supported_features = FORECAST_FEATURES.daily;
         }
     }
 }

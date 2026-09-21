@@ -55,6 +55,7 @@ import MediaSourceModule from './modules/mediaSource';
 import SearchModule from './modules/search';
 import ImageModule from './modules/image';
 import CalendarModule from './modules/calendar';
+import WeatherForecastModule from './modules/weatherForecast';
 import { migrateStorageObjects } from './modules/storage';
 import { resolvePathInside, hasParentSegment } from './safePath';
 import type { IModule } from './modules/iModule';
@@ -80,6 +81,7 @@ type Modules = {
     search: InstanceType<typeof SearchModule>;
     image: InstanceType<typeof ImageModule>;
     calendar: InstanceType<typeof CalendarModule>;
+    weatherForecast: InstanceType<typeof WeatherForecastModule>;
     history: InstanceType<typeof HistoryModule>;
     statisticsRecorder: InstanceType<typeof StatisticsRecorderModule>;
 };
@@ -435,6 +437,10 @@ class WebServer {
                 sendResponse: (ws: unknown, id: unknown, result?: unknown) => this._sendResponse(ws, id, result),
                 entityData,
                 getUserIDFromName: (name: string | undefined) => this._modules.person.getUserIDFromName(name),
+            }),
+            weatherForecast: new WeatherForecastModule({
+                sendResponse: (ws: unknown, id: unknown, result?: unknown) => this._sendResponse(ws, id, result),
+                entityData,
             }),
             image: new ImageModule({
                 adapter: this.adapter,
@@ -3290,6 +3296,7 @@ class WebServer {
 
                     this._modules.template.removeTemplate(ws, message.subscription);
                     this._modules.calendar.removeSubscription(ws, message.subscription);
+                    this._modules.weatherForecast.removeSubscription(ws, message.subscription);
                 }
 
                 this._sendResponse(ws, message.id);

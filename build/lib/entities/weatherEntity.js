@@ -24,6 +24,7 @@ __export(weatherEntity_exports, {
 module.exports = __toCommonJS(weatherEntity_exports);
 var import_baseEntity = require("./baseEntity");
 var import_utils = require("./utils");
+var import_weatherForecast = require("../modules/weatherForecast");
 function toAdapterIconUrl(value) {
   return typeof value === "string" ? value.replace(/^\/([a-zA-Z0-9_-]+)\.admin\//, "/adapter/$1/") : value;
 }
@@ -140,7 +141,15 @@ class WeatherEntity extends import_baseEntity.BaseEntity {
       if (somethingFound) {
         state = controls.states.find((s) => s.id && s.name === `DATE${postFix}`);
         if (state == null ? void 0 : state.id) {
-          this.context.ATTRIBUTES.push({ attribute: `forecast.${hassCounter}.datetime`, getId: state.id });
+          this.context.ATTRIBUTES.push({
+            attribute: `forecast.${hassCounter}.datetime`,
+            getId: state.id,
+            getParser: (ent, attr, iobState) => {
+              var _a;
+              (0, import_utils.setJsonAttribute)(ent.attributes, attr.attribute, (_a = iobState == null ? void 0 : iobState.val) != null ? _a : null);
+              (0, import_weatherForecast.updateForecastFeature)(ent);
+            }
+          });
           this.addID2entity(state.id);
         } else if (dayShiftId) {
           const capturedShift = day;
@@ -158,12 +167,16 @@ class WeatherEntity extends import_baseEntity.BaseEntity {
                 date.setDate(date.getDate() + attr.dayShift);
               }
               (0, import_utils.setJsonAttribute)(ent.attributes, attr.attribute, date.toISOString());
+              (0, import_weatherForecast.updateForecastFeature)(ent);
             }
           });
         }
       } else if (hassCounter >= 0) {
         break;
       }
+    }
+    if (hassCounter >= 0) {
+      this.attributes.supported_features = import_weatherForecast.FORECAST_FEATURES.daily;
     }
   }
 }
